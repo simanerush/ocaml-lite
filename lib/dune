@@ -1,4 +1,8 @@
 (library
+ (libraries nice_parser)
  (name ocaml_lite))
 
 (ocamllex lexer)
+(menhir
+ (modules grammar)
+ (flags -v --explain --dump --trace ))

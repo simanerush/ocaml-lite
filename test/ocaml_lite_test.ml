@@ -2,8 +2,8 @@ open OUnit2
 
 let tests = "test suite for ocaml_lite" >::: [
     Lexer.lex_tests;
-    (* Parser.parse_tests;
-    Typechecker.typechecker_tests;
+    Parser.parse_tests;
+    (* Typechecker.typechecker_tests;
     Interpreter.interpreter_tests; *)
   ]
 

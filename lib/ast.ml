@@ -24,18 +24,18 @@ and expr =
   | Let of identifier * param list * typ option * expr * expr
   | LetRec of identifier * param list * typ option * expr * expr
   | If of expr * expr * expr
-  | Fun of param list * typ option * expr
+  | FunExpr of param list * typ option * expr
   | Application of expr * expr
   | Tuple of expr list
   | BinaryOp of binop * expr * expr
   | UnaryOp of unop * expr
   | Paren of expr
-  | Int of int
-  | Bool of bool
-  | String of string
+  | IntExpr of int
+  | BoolExpr of bool
+  | StringExpr of string
   | Identifier of identifier
   | Unit
-  | Match of expr * match_branch list
+  | MatchExpr of expr * match_branch list
 
 (* Binary operators *)
 and binop =
@@ -57,9 +57,9 @@ and unop =
 
 (* Types *)
 and typ =
-  | Arrow of typ * typ
+  | FunType of typ * typ
   | ParenType of typ
-  | TupleType of typ * typ
+  | TupleType of typ list
   | IntType
   | BoolType
   | StringType
@@ -68,9 +68,4 @@ and typ =
 
 (* Match branches *)
 and match_branch =
-  | MatchBranch of identifier * pattern_var list * expr
-
-(* Pattern variables *)
-and pattern_var = 
-  | SimpleVar of identifier
-  | TupleVar of identifier list
+  | MatchBranch of identifier * string list * expr
