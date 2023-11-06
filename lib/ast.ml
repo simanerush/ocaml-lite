@@ -50,7 +50,6 @@ and unop =
 
 and typ =
   | FunType of typ * typ
-  | ParenType of typ
   | TupleType of typ list
   | IntType
   | BoolType
