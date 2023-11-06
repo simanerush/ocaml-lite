@@ -1,25 +1,19 @@
-(* Identifiers *)
 type identifier = string
 
-(* Programs *)
 type program = binding list
 
-(* Bindings *)
 and binding =
   | ValueBinding of identifier * param list * typ option * expr
   | RecursiveBinding of identifier * param list * typ option * expr
   | TypeBinding of identifier * constructor list
 
-(* Constructors for type definitions *)
 and constructor =
   | Constructor of identifier * typ option
 
-(* Parameters *)
 and param =
   | SimpleParam of identifier
   | TypedParam of identifier * typ
 
-(* Expressions *)
 and expr =
   | Let of identifier * param list * typ option * expr * expr
   | LetRec of identifier * param list * typ option * expr * expr
@@ -37,7 +31,6 @@ and expr =
   | Unit
   | MatchExpr of expr * match_branch list
 
-(* Binary operators *)
 and binop =
   | Add
   | Sub
@@ -55,7 +48,6 @@ and unop =
   | Not
   | Neg
 
-(* Types *)
 and typ =
   | FunType of typ * typ
   | ParenType of typ
@@ -66,6 +58,5 @@ and typ =
   | UnitType
   | IdType of identifier
 
-(* Match branches *)
 and match_branch =
   | MatchBranch of identifier * string list * expr
