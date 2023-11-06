@@ -2,6 +2,11 @@ open OUnit2
 open Ocaml_lite.Ast
 open Ocaml_lite.Parser
 
+let assert_equal_expr s e = 
+  assert_equal
+    (parse ("let x = " ^ s ^ ";;"))
+    ([ValueBinding ("x", [], None, e)])
+
 let test_parser_value_binding _ =
   assert_equal
     (parse "let x = 5;;")
@@ -43,9 +48,15 @@ let test_parser_string _ =
     ([ValueBinding ("x", [], None, StringExpr "hello")])
 
 let test_parser_pattern_match _ =
-  assert_equal
-    (parse "match x with | Some n => n | None => 0")
-    ([ValueBinding ("x", [], None, MatchExpr (Identifier "x", [MatchBranch ("Some", ["n"], Identifier "n"); MatchBranch ("None", [], IntExpr 0)]))])
+  assert_equal_expr
+  "match x with | Some n => n | None => 0"
+  (MatchExpr (
+    Identifier "x", 
+    [
+      MatchBranch ("Some", ["n"], Identifier "n");
+      MatchBranch ("None", [], IntExpr 0)
+    ]
+  ))
 
 let parse_tests = 
   "test suite for parser"
@@ -58,6 +69,5 @@ let parse_tests =
     "function with comparison" >:: test_parser_fun_comp;
     "unary operator" >:: test_parser_unary_o;
     "string" >:: test_parser_string;
-    (* Can't get the match to work *)
-    (* "pattern matching" >:: test_parser_pattern_match; *)
+    "pattern matching" >:: test_parser_pattern_match;
   ]

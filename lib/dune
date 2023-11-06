@@ -5,4 +5,4 @@
 (ocamllex lexer)
 (menhir
  (modules grammar)
- (flags -v --explain --dump --trace ))
+ (flags -v))
