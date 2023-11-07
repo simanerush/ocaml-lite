@@ -14,4 +14,6 @@ include Nice_parser.Make(struct
   include Lexer
 end)
 
+let () = pp_exceptions ()
+
 let parse = parse_string

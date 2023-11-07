@@ -1,18 +1,23 @@
 type identifier = string
+[@@deriving show]
 
 type program = binding list
+[@@deriving show]
 
 and binding =
   | ValueBinding of identifier * param list * typ option * expr
   | RecursiveBinding of identifier * param list * typ option * expr
   | TypeBinding of identifier * constructor list
+[@@deriving show]
 
 and constructor =
   | Constructor of identifier * typ option
+[@@deriving show]
 
 and param =
   | SimpleParam of identifier
   | TypedParam of identifier * typ
+[@@deriving show]
 
 and expr =
   | Let of identifier * param list * typ option * expr * expr
@@ -30,6 +35,7 @@ and expr =
   | Identifier of identifier
   | Unit
   | MatchExpr of expr * match_branch list
+[@@deriving show]
 
 and binop =
   | Add
@@ -42,11 +48,12 @@ and binop =
   | Concat
   | And
   | Or
+[@@deriving show]
 
-(* Unary operators *)
 and unop =
   | Not
   | Neg
+[@@deriving show]
 
 and typ =
   | FunType of typ * typ
@@ -56,6 +63,8 @@ and typ =
   | StringType
   | UnitType
   | IdType of identifier
+[@@deriving show]
 
 and match_branch =
   | MatchBranch of identifier * string list * expr
+[@@deriving show]
