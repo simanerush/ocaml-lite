@@ -76,8 +76,8 @@ let prog :=
     | b = binding; DoubleSemicolon; p = prog; { b :: p }
 
 let binding :=
-    | Let; id = Id; params = param*; typ = typ?; Eq; e = expr; { ValueBinding(id, params, typ, e) }
-    | Let; Rec; id = Id; params = param*; typ = typ?; Eq; e = expr; { RecursiveBinding(id, params, typ, e) }
+    | Let; id = Id; params = param*; Colon?; typ = typ?; Eq; e = expr; { ValueBinding(id, params, typ, e) }
+    | Let; Rec; id = Id; params = param*; Colon?; typ = typ?; Eq; e = expr; { RecursiveBinding(id, params, typ, e) }
     | Type; id = Id; Eq; Pipe?; t = separated_nonempty_list(Pipe, constructor); { TypeBinding(id, t) }
 
 let constructor :=
@@ -85,31 +85,24 @@ let constructor :=
     | id = Id; LParen; t = option(Of; typ); RParen; { Constructor(id, t) }
 
 let param :=
-  | id = Id; Colon; t = typ; { TypedParam(id, t) }
-  | id = Id; { SimpleParam(id) }
+    | id = Id; Colon; t = typ; { TypedParam(id, t) }
+    | id = Id; { SimpleParam(id) }
 
 let expr :=
-    | ~ = expr_appl; <>
-    | ~ = expr_non_appl; <>
-    | ~ = expr_other; <>
-
-let expr_appl :=
-    | e = expr_other; e2 = expr_other; { Application(e, e2) }
+    | e = expr_non_appl; { e }
 
 let expr_non_appl :=
-    | e1 = expr_other; op = binop; e2 = expr; { BinaryOp(op, e1, e2) }
-    | op = unop; e = expr; { UnaryOp(op, e) }
-    | Let; id = Id; params = param*; typ = typ?; Eq; e = expr; In; e2 = expr; { Let(id, params, typ, e, e2) }
+    | e1 = expr_appl; op = binop; e2 = expr_non_appl; { BinaryOp(op, e1, e2) }
+    | op = unop; e = expr_non_appl; { UnaryOp(op, e) }
+    | Let; id = Id; params = param*; Colon?; typ = typ?; Eq; e = expr; In; e2 = expr; { Let(id, params, typ, e, e2) }
     | Fun; params = param+; t = option(Colon; typ); DoubleArrow; e = expr; { FunExpr(params, t, e) }
     | If; e = expr; Then; e2 = expr; Else; e3 = expr; { If(e, e2, e3) }
     | Match; e = expr; With; Pipe?; b = separated_nonempty_list(Pipe, match_branch); { MatchExpr(e, b) }
+    | e = expr_appl; { e }
 
-let match_branch :=
-    | id = Id; vars = pattern_vars?; DoubleArrow; e = expr; { MatchBranch(id, Option.value ~default:[] vars, e) }
-
-let pattern_vars :=
-    | id = Id; { [id] }
-    | LParen; ~ = separated_nonempty_list(Comma, Id); RParen; <>
+let expr_appl :=
+    | e = expr_other; e2 = expr_appl; { Application(e, e2) }
+    | e = expr_other; { e }
 
 let expr_other :=
     | LParen; h = expr; Comma; t = separated_nonempty_list(Comma, expr); RParen; { Tuple (h :: t) }
@@ -121,16 +114,23 @@ let expr_other :=
     | ~ = Id; <Identifier>
     | LParen; RParen; { Unit }
 
+let match_branch :=
+    | id = Id; vars = pattern_vars?; DoubleArrow; e = expr; { MatchBranch(id, Option.value ~default:[] vars, e) }
+
+let pattern_vars :=
+    | id = Id; { [id] }
+    | LParen; ~ = separated_nonempty_list(Comma, Id); RParen; <>
+
 let typ :=
     | ~ = typ_function; <>
     | ~ = typ_tuple; <>
     | ~ = typ_other; <>
 
 let typ_function :=
-    | t = typ; Arrow; t2 = typ; <FunType>
+    | t = typ_other; Arrow; t2 = typ; { FunType(t, t2) }
 
 let typ_tuple :=
-    | LParen; h = typ; Comma; t = separated_nonempty_list(Comma, typ); RParen; { TupleType([h] @ t) }
+    | LParen; h = typ_other; Comma; t = separated_nonempty_list(Comma, typ_other); RParen; { TupleType([h] @ t) }
 
 let typ_other :=
     | LParen; t = typ; RParen; { t }
