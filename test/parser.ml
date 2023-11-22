@@ -1,6 +1,7 @@
 open OUnit2
 open Ocaml_lite.Ast
 open Ocaml_lite.Parser
+open Ocaml_lite.Dump
 
 let assert_equal_expr s e = 
   assert_equal
@@ -36,6 +37,11 @@ let test_parser_fun_comp _ =
   assert_equal
     (parse "let f = fun x y => x < y;;")
     ([ValueBinding ("f", [], None, FunExpr ([SimpleParam "x"; SimpleParam "y"], None, BinaryOp (Lt, Identifier "x", Identifier "y")))])
+
+let test_parser_typed_fun _ =
+  assert_equal
+    (parse "let f = fun (x : int) (y : int) => x < y;;")
+    ([ValueBinding ("f", [], None, FunExpr ([TypedParam ("x", IntType) ; TypedParam ("x", IntType)], None, BinaryOp (Lt, Identifier "x", Identifier "y")))])
 
 let test_parser_unary_o _ =
   assert_equal

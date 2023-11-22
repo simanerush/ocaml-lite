@@ -28,7 +28,6 @@ and expr =
   | Tuple of expr list
   | BinaryOp of binop * expr * expr
   | UnaryOp of unop * expr
-  | Paren of expr
   | IntExpr of int
   | BoolExpr of bool
   | StringExpr of string
@@ -63,6 +62,7 @@ and typ =
   | StringType
   | UnitType
   | IdType of identifier
+  | VarTy of int
 [@@deriving show]
 
 and match_branch =

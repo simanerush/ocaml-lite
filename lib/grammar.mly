@@ -84,9 +84,12 @@ let constructor :=
     | id = Id; { Constructor(id, None) }
     | id = Id; LParen; t = option(Of; typ); RParen; { Constructor(id, t) }
 
+let typed_param :=
+    | LParen; id = Id; Colon; t = typ; RParen; { TypedParam(id, t) }
+
 let param :=
-    | id = Id; Colon; t = typ; { TypedParam(id, t) }
     | id = Id; { SimpleParam(id) }
+    | tp = typed_param; { tp }
 
 let expr :=
     | e = expr_non_appl; { e }
@@ -130,7 +133,8 @@ let typ_function :=
     | t = typ_other; Arrow; t2 = typ; { FunType(t, t2) }
 
 let typ_tuple :=
-    | LParen; h = typ_other; Comma; t = separated_nonempty_list(Comma, typ_other); RParen; { TupleType([h] @ t) }
+    | LParen; h = typ; Comma; t = separated_nonempty_list(Comma, typ); RParen; { TupleType (h :: t) }
+    | t1 = typ_other; Times; t2 = typ; { TupleType [t1; t2] }
 
 let typ_other :=
     | LParen; t = typ; RParen; { t }
