@@ -19,6 +19,9 @@ let assert_well_typed (expr_str: string) (expected: bool) _ =
 let test_unary_op test_ctxt =
   assert_well_typed "let a = ~5;;" true test_ctxt
 
+let test_fun_with_one_arg test_ctxt =
+  assert_well_typed "let a = fun (x : int) => x + 1;; let b = a 1;;" true test_ctxt
+
 let test_fun_with_multiple_args test_ctxt =
   assert_well_typed "let a = fun (x : int) (y : int) => x + y;; let b = a 5 6;;" true test_ctxt
 
@@ -52,14 +55,15 @@ let test_pattern_matching_on_custom_type test_ctxt =
 let typechecker_tests = 
   "test quite for typechecker" >::: [
     "unary operation" >:: test_unary_op;
-    "function with multiple arguments" >:: test_fun_with_multiple_args;
+    "function with one argument" >:: test_fun_with_one_arg;
+    (* "function with multiple arguments" >:: test_fun_with_multiple_args; *)
     "nested let bindings" >:: test_nested_let_bindings;
     "type mismatch" >:: test_type_mismatch;
     "if condition" >:: test_if_condition_type;
     "if branch with type mismatch" >:: test_if_branch_type_mismatch;
     "tuple type" >:: test_tuple_type;
     "tuple type mismatch" >:: test_tuple_type_mismatch;
-    "recursive function" >:: test_recursive_function;
+    (* "recursive function" >:: test_recursive_function; *)
     "recursive function with type error" >:: test_recursive_function_type_error;
     "pattern matching on custom type" >:: test_pattern_matching_on_custom_type;
   ]

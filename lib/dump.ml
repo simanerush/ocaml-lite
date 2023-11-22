@@ -36,6 +36,7 @@ and string_of_typ = function
   | VarTy id -> "var" ^ string_of_int id
   | FunType(arg, ret) -> "(" ^ string_of_typ arg ^ " -> " ^ string_of_typ ret ^ ")"
   | TupleType types -> "(" ^ String.concat " * " (List.map string_of_typ types) ^ ")"
+  | Forall (q, t) -> "forall " ^ string_of_int q ^ ". " ^ string_of_typ t
 
 and string_of_expr = function
   | Let(id, params, typ, e1, e2) ->

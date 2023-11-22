@@ -62,7 +62,9 @@ and typ =
   | StringType
   | UnitType
   | IdType of identifier
+  (* Internal to typechecker *)
   | VarTy of int
+  | Forall of int * typ
 [@@deriving show]
 
 and match_branch =
