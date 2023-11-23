@@ -88,12 +88,12 @@ let rec type_infer (env: environment) (expr: expr) : (typ * constraints) =
       | None -> c1 @ c2 in
       (t2, constraints)
     | LetRec (id, params, opt_typ, e1, e2) ->
-      let new_env, param_types = extend_env_with_params env params in
+      let new_env, _ = extend_env_with_params env params in
       (* First, extend the environment with the function type itself *)
       (* to refer to it later in the body. *)
       let fun_type = match opt_typ with
       | Some typ -> typ
-      | None -> (FunType(TupleType param_types, fresh_type_var ())) in
+      | None -> fresh_type_var () in
       let env' = (id, fun_type) :: new_env in
       let (t1, c1) = type_infer env' e1 in
       (* Next, extend the environment with the type of e2*)

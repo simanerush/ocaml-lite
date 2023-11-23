@@ -22,6 +22,7 @@ let test_unary_op test_ctxt =
 let test_fun_with_one_arg test_ctxt =
   assert_well_typed "let a = fun (x : int) => x + 1;; let b = a 1;;" true test_ctxt
 
+(* Application fails*)
 let test_fun_with_multiple_args test_ctxt =
   assert_well_typed "let a = fun (x : int) (y : int) => x + y;; let b = a 5 6;;" true test_ctxt
 
@@ -43,6 +44,7 @@ let test_tuple_type test_ctxt =
 let test_tuple_type_mismatch test_ctxt =
   assert_well_typed "let a : int * int = (5, true);;" false test_ctxt
 
+(* Idk how to type check the recursive binding *)
 let test_recursive_function test_ctxt =
   assert_well_typed "let rec fact n = if n = 0 then 1 else n * fact (n - 1);; let a = fact 5;;" true test_ctxt
 
