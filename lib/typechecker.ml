@@ -56,12 +56,13 @@ let generalize (env: environment) (t: typ) : typ =
   let to_quantify = List.filter (fun v -> not (List.mem v free_in_env)) free_in_type in
   List.fold_right (fun var acc -> Forall(var, acc)) to_quantify t
 
-let instantiate (poly_type: typ) (arg_type: typ) : typ =
-  match poly_type with
+let rec instantiate (t: typ) : typ =
+  match t with
   | Forall(var_id, ty) ->
-      let subst = [(var_id, arg_type)] in
-      apply_substitution subst ty
-  | _ -> poly_type
+    let fresh_var = fresh_type_var () in
+    let subst = [(var_id, fresh_var)] in
+    instantiate (apply_substitution subst ty)
+  | _ -> t  
 
 let rec type_infer (env: environment) (expr: expr) : (typ * constraints) =
   let result = 
@@ -76,30 +77,44 @@ let rec type_infer (env: environment) (expr: expr) : (typ * constraints) =
         | None -> failwith ("Unbound identifier or type: " ^ id))
     | Let (id, params, opt_typ, e1, e2) ->
       let new_env, _ = extend_env_with_params env params in
-      (* First, type-check e1*)
       let (t1, c1) = type_infer new_env e1 in
-      (* Generalize! *)
-      let generalized_t1 = generalize env t1 in
-      let env' = (id, generalized_t1) :: env in
-      (* Next, extend the environment with the type of e2*)
-      let (t2, c2) = type_infer env' e2 in
-      let constraints = match opt_typ with
-      | Some opt_typ_ann -> ((opt_typ_ann, generalized_t1) :: c1) @ c2
-      | None -> c1 @ c2 in
-      (t2, constraints)
+      (match unify_constraints c1 with
+      | Error msg -> failwith msg
+      | Ok subst ->
+        let updated_env = apply_substitution_to_env subst env in
+        let updated_t1 = apply_substitution subst t1 in
+        let fun_type = match params with
+          | [] -> updated_t1
+          | _ -> build_fun_type params updated_t1
+        in
+        let generalized_fun_type = generalize updated_env fun_type in
+        let env' = (id, generalized_fun_type) :: env in
+        let (t2, c2) = type_infer env' e2 in
+        let constraints = match opt_typ with
+          | Some opt_typ_ann -> (opt_typ_ann, generalized_fun_type) :: c2
+          | None -> c2
+      in
+      (t2, constraints))
     | LetRec (id, params, opt_typ, e1, e2) ->
       let new_env, _ = extend_env_with_params env params in
-      (* First, extend the environment with the function type itself *)
-      (* to refer to it later in the body. *)
       let fun_type = match opt_typ with
-      | Some typ -> typ
-      | None -> fresh_type_var () in
-      let env' = (id, fun_type) :: new_env in
-      let (t1, c1) = type_infer env' e1 in
-      (* Next, extend the environment with the type of e2*)
-      let (t2, c2) = type_infer ((id, fun_type) :: env) e2 in
-      let constraints = ((fun_type, t1) :: c1) @ c2 in
-      (t2, constraints)
+        | Some typ -> typ
+        | None -> build_fun_type params (fresh_type_var ())
+      in
+      let env_with_fun = (id, fun_type) :: new_env in
+      let (_, c1) = type_infer env_with_fun e1 in
+      (match unify_constraints c1 with 
+      | Error msg -> failwith msg
+      | Ok subst ->
+          let updated_env = apply_substitution_to_env subst env in 
+          let generalized_fun_type = generalize updated_env fun_type in
+          let env' = (id, generalized_fun_type) :: env in
+          let (t2, c2) = type_infer env' e2 in 
+          let constraints = match opt_typ with 
+            | Some opt_type_ann -> (opt_type_ann, generalized_fun_type) :: c2
+            | None -> c2
+      in
+      (t2, constraints))  
     | If (e1, e2, e3) ->
       let (t1, c1) = type_infer env e1 in
       let (t2, c2) = type_infer env e2 in
@@ -115,17 +130,6 @@ let rec type_infer (env: environment) (expr: expr) : (typ * constraints) =
       let (t, _) = type_infer env e in
       infer_unop_type op t
     | FunExpr (params, opt_typ, e) ->
-      let rec build_fun_type params return_type =
-        match params with
-        | [] -> return_type
-        | p :: ps ->
-          let param_type = match p with
-            | SimpleParam(_) -> fresh_type_var ()
-            | TypedParam(_, typ) -> typ
-          in
-          FunType(param_type, build_fun_type ps return_type)
-      in
-
       let env', _ = extend_env_with_params env params in
       let (t, c) = type_infer env' e in
       let fun_type = build_fun_type (List.rev params) (match opt_typ with
@@ -136,20 +140,10 @@ let rec type_infer (env: environment) (expr: expr) : (typ * constraints) =
       let (t1, c1) = type_infer env e1 in
       let (t2, c2) = type_infer env e2 in
       let result_type = fresh_type_var () in
-
-      (* Instantiate if t1 is a polymorphic type *)
-      let t1_instantiated = instantiate t1 t2 in
-
-      Printf.printf "Application: Function Expression Type: %s\n" (string_of_typ t1_instantiated);
-      Printf.printf "Application: Argument Expression Type: %s\n" (string_of_typ t2);
-      
-      Printf.printf "Expected Function Type in Application: %s -> %s\n" (string_of_typ t2) (string_of_typ result_type);
   
+      let t1_instantiated = instantiate t1 in
       let c = (t1_instantiated, FunType(t2, result_type)) :: c1 @ c2 in
-
-      Printf.printf "Generated Constraint for Function Application: %s = %s -> %s\n" (string_of_typ t1_instantiated) (string_of_typ t2) (string_of_typ result_type);
-  
-      (result_type, c)
+      (result_type, c)    
     | Tuple es ->
       let ts_cs = List.map (type_infer env) es in
       let ts = List.map fst ts_cs in
@@ -169,11 +163,9 @@ let rec type_infer (env: environment) (expr: expr) : (typ * constraints) =
   
       match branch_types with
       | hd :: _ -> (hd, c @ branch_constraints @ all_branches_same_type)
-      | [] -> failwith "Match expression must have at least one branch"    
+      | [] -> failwith "Match expression must have at least one branch"
     in
-    let inferred_type_string = string_of_typ (fst result) in
-    Printf.printf "Type inferred: %s\n" inferred_type_string; 
-    result    
+    result
 
 and infer_binop_type op t1 t2 =
   match op with
@@ -187,10 +179,14 @@ and infer_unop_type op t =
   | Not -> (BoolType, [(t, BoolType)])
   | Neg -> (IntType, [(t, IntType)])
   
-and infer_match_branch env matched_type (MatchBranch (_, vars, e)) =
-  let extended_env = List.fold_left (fun acc var -> (var, matched_type) :: acc) env vars in
-  let (t, c) = type_infer extended_env e in
-  (t, c)
+and infer_match_branch env matched_type (MatchBranch (cons_id, vars, e)) =
+  match List.assoc_opt cons_id env with
+  | Some cons_type ->
+    let extended_env = List.fold_left (fun acc var -> (var, cons_type) :: acc) env vars in
+    let (t, c) = type_infer extended_env e in
+    (t, c @ [(matched_type, cons_type)])
+  | None ->
+    failwith ("Unknown constructor: " ^ cons_id)  
 
 and extend_env_with_params env params =
   List.fold_left (fun (acc_env, acc_types) param ->
@@ -202,7 +198,7 @@ and extend_env_with_params env params =
         ((id, typ) :: acc_env, typ :: acc_types)
   ) (env, []) params
 
-let rec unify_constraints (constraints: constraints) : (substitution, string) result =
+and unify_constraints (constraints: constraints) : (substitution, string) result =
   match constraints with
   | [] -> Ok []
   | (t1, t2) :: rest ->
@@ -242,29 +238,44 @@ and occurs_check (var_id: int) (t: typ) : bool =
   | TupleType types -> List.exists (occurs_check var_id) types
   | _ -> false
 
-let rec apply_substitution_to_env (subst: substitution) (env: environment) : environment =
+and build_fun_type params return_type =
+  match params with
+  | [] -> return_type
+  | p :: ps ->
+      let param_type = match p with
+        | SimpleParam(_) -> fresh_type_var ()
+        | TypedParam(_, typ) -> typ
+      in
+      FunType(param_type, build_fun_type ps return_type)
+
+and apply_substitution_to_env (subst: substitution) (env: environment) : environment =
   List.map (fun (id, typ) -> (id, apply_substitution subst typ)) env
 
-let process_binding env (binding: binding) : environment * constraints =
+let process_binding env (binding: binding) : (environment * constraints, string) result =
   match binding with
   | ValueBinding(id, params, opt_typ, expr) ->
     let new_env, _ = extend_env_with_params env params in
     let (t1, c1) = type_infer new_env expr in
-    let generalized_t1 = generalize env t1 in
-    let c1 = match opt_typ with
-      | Some typ -> (typ, t1) :: c1
+    let c1_with_opt_typ = match opt_typ with
+      | Some annotated_type -> (annotated_type, t1) :: c1
       | None -> c1 in
-    let env' = (id, generalized_t1) :: env in
-    (env', c1)
+    (match unify_constraints c1_with_opt_typ with
+    | Error msg -> Error msg
+    | Ok subst ->
+      let generalized_t1 = generalize (apply_substitution_to_env subst env) t1 in
+      let env' = (id, generalized_t1) :: env in
+      Ok (env', c1_with_opt_typ))
   | RecursiveBinding(id, params, _, expr) ->
     let fun_type_var = fresh_type_var () in
     let recursive_env = (id, fun_type_var) :: env in
     let new_env, _ = extend_env_with_params recursive_env params in
     let (t1, c1) = type_infer new_env expr in
-    let generalized_t1 = generalize env t1 in
-    let c1_with_recursion = (fun_type_var, t1) :: c1 in
-    let env' = (id, generalized_t1) :: env in
-    (env', c1_with_recursion)  
+    (match unify_constraints c1 with
+    | Error msg -> Error msg
+    | Ok subst ->
+      let generalized_t1 = generalize (apply_substitution_to_env subst env) t1 in
+      let env' = (id, generalized_t1) :: env in
+      Ok (env', c1 @ [(fun_type_var, t1)]))
   | TypeBinding(type_id, constructors) ->
     let env' = List.fold_left (fun acc_env (Constructor (cons_id, cons_type_opt)) ->
       let cons_type = match cons_type_opt with
@@ -273,19 +284,21 @@ let process_binding env (binding: binding) : environment * constraints =
       in
       (cons_id, cons_type) :: acc_env
     ) env constructors in
-    (env', [])
-      
+    Ok (env', [])
+
 let rec process_program env constraints = function
-  | [] -> 
+| [] -> 
   begin match unify_constraints constraints with
   | Error msg -> Error msg
   | Ok subst ->
     let final_env = apply_substitution_to_env subst env in
     Ok final_env
   end
-  | binding :: rest ->
-  let (env', c) = process_binding env binding in
-  process_program env' (constraints @ c) rest
+| binding :: rest ->
+  begin match process_binding env binding with
+  | Error msg -> Error msg
+  | Ok (env', c) -> process_program env' (constraints @ c) rest
+  end
 
 let type_check (ast: program) : typecheck_result =
   match process_program [] [] ast with
