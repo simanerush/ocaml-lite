@@ -1,48 +1,58 @@
 open OUnit2
+open Ocaml_lite.Parser
+open Ocaml_lite.Ast
+open Ocaml_lite.Interpreter
 
-type ol_value =
-  | OLInt of int
-  | OLBool of bool
-  | OLString of string
-  | OLUnit
-  | OLTuple of ol_value * ol_value
-  | OLFunction of (ol_value list) -> ol_value
+let rec find_value_by_id id ctx =
+  match ctx with
+  | (ctx_id, value) :: rest -> if ctx_id = id then Some value else find_value_by_id id rest
+  | [] -> None
 
-let assert_interprets_to (expr : string) (expected : ol_value) =
-  assert_equal (failwith "Interpreter is not implemented") expected
+let assert_interprets_to (expr: string) (id: string) (expected: ol_value) =
+  let ast = parse expr in
+  let ctx = interpret ast in
+  match find_value_by_id id ctx with
+  | Some value -> assert_equal expected value
+  | None -> assert_failure ("Identifier \"" ^ id ^ "\" not found in context")
 
 let test_arithmetic _ =
-  assert_interprets_to "let a = 3 + 4;;" (OLInt 7)
+  assert_interprets_to "let a = 3 + 4;;" "a" (OLInt 7)
 
 let test_conditional_true _ =
-  assert_interprets_to "if true then 5 else 10;;" (OLInt 5)
+  assert_interprets_to "let b = if true then 5 else 10;;" "b" (OLInt 5)
 
 let test_conditional_false _ =
-  assert_interprets_to "if false then 5 else 10;;" (OLInt 10)
+  assert_interprets_to "let c = if false then 5 else 10;;" "c" (OLInt 10)
 
 let test_string_concat _ =
-  assert_interprets_to "let a = \"hello\" ^ \" world\";;" (OLString "hello world")
+  assert_interprets_to "let a = \"hello\" ^ \" world\";;" "a" (OLString "hello world")
 
 let test_function_simple _ =
-  assert_interprets_to "let a = fun x => x + 1;; a 5;;" (OLInt 6)
+  assert_interprets_to "let a = fun x => x + 1;; let result = a 5;;" "result" (OLInt 6)
 
 let test_function_complex _ =
-  assert_interprets_to "let rec a b = if b = 0 then 1 else b * a (b - 1);; a 5;;" (OLInt 120)
+  assert_interprets_to "let rec a b = if b = 0 then 1 else b * a (b - 1);; let result = a 5;;" "result" (OLInt 120)
 
 let test_tuple _ =
-  assert_interprets_to "let a = (5, true);;" (OLTuple [OLInt 5; OLBool true])
+  assert_interprets_to "let a = (5, true);;" "a" (OLTuple [OLInt 5; OLBool true])
 
 let test_let_binding _ =
-  assert_interprets_to "let a = 5;; let b = a + 1;;" (OLInt 6)
+  assert_interprets_to "let a = 5;; let b = a + 1;;" "b" (OLInt 6)
 
 let test_unary_operation _ =
-  assert_interprets_to "let a = ~5;;" (OLInt (-5))
+  assert_interprets_to "let a = ~5;;" "a" (OLInt (-5))
 
 let test_match _ =
-  assert_interprets_to "let a = match 5 with | 5 => true | _ => false;;" (OLBool true)
+  let program = "type color = | Red | Green | Blue;; \
+                  let string_of_color = fun c => match c with \
+                  | Red => \"red\" \
+                  | Green => \"green\" \
+                  | Blue => \"blue\";; \
+                  let color_str : string = string_of_color Red;;" in
+  assert_interprets_to program "color_str" (OLString "red") 
 
 let test_recursion _ =
-  assert_interprets_to "let rec fact x = if x = 1 then 1 else x * fact (x - 1);; fact 5;;" (OLInt 120)
+  assert_interprets_to "let rec fact x = if x = 1 then 1 else x * fact (x - 1);; let result = fact 5;;" "result" (OLInt 120)
 
 let interpreter_tests =
   "test suite for interpreter"
