@@ -81,8 +81,7 @@ let binding :=
     | Type; id = Id; Eq; Pipe?; t = separated_nonempty_list(Pipe, constructor); { TypeBinding(id, t) }
 
 let constructor :=
-    | id = Id; { Constructor(id, None) }
-    | id = Id; LParen; t = option(Of; typ); RParen; { Constructor(id, t) }
+    | id = Id; t = option(Of; typ); { Constructor(id, t) }
 
 let typed_param :=
     | LParen; id = Id; Colon; t = typ; RParen; { TypedParam(id, t) }

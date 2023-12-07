@@ -1,7 +1,11 @@
 open OUnit2
 open Ocaml_lite.Parser
 open Ocaml_lite.Ast
+open Ocaml_lite.Dump
 open Ocaml_lite.Interpreter
+
+let dump_context ctx =
+  String.concat ", " (List.map (fun (id, value) -> id ^ ": " ^ string_of_value value) ctx)
 
 let rec find_value_by_id id ctx =
   match ctx with
@@ -13,7 +17,10 @@ let assert_interprets_to (expr: string) (id: string) (expected: ol_value) =
   let ctx = interpret ast in
   match find_value_by_id id ctx with
   | Some value -> assert_equal expected value
-  | None -> assert_failure ("Identifier \"" ^ id ^ "\" not found in context")
+  | None -> 
+    let ast_str = dump_ast ast in
+    let ctx_str = dump_context ctx in
+    assert_failure ("Identifier \"" ^ id ^ "\" not found in context.\nAST: " ^ ast_str ^ "\nContext: " ^ ctx_str)  
 
 let test_arithmetic _ =
   assert_interprets_to "let a = 3 + 4;;" "a" (OLInt 7)

@@ -1,14 +1,18 @@
-let parse = fun _ -> failwith "parse is undefined"
-let typecheck = fun _ -> failwith "typecheck is undefined"
-let interpret = fun _-> failwith "interpret is undefined"
+open Ocaml_lite.Parser
+open Ocaml_lite.Typechecker
+open Ocaml_lite.Interpreter
+
+let parse = parse_string
+let typecheck = type_check
+let interpret = interpret
 
 let () =
-  if Array.length Sys.argv <> 2
-  then failwith "Expected exactly one command line argument"
+  if Array.length Sys.argv <> 2 then
+    failwith "Expected exactly one command line argument"
   else
     let ch = In_channel.open_text Sys.argv.(1) in
     let text = In_channel.input_all ch in
     let () = In_channel.close ch in
     let ast = parse text in
     let _ = typecheck ast in
-    interpret ast
+    ignore (interpret ast)
